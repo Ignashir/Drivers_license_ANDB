@@ -1,5 +1,9 @@
 import pygame
 import datetime
+<<<<<<< HEAD
+=======
+from zoneinfo import ZoneInfo
+>>>>>>> 277ca55 (Changes)
 
 pygame.init()
 
@@ -107,6 +111,10 @@ def draw_reservations(monday):
 def draw_grid():
     today = datetime.date.today()
     monday = today - datetime.timedelta(days=today.weekday()) + datetime.timedelta(weeks=week_offset)
+<<<<<<< HEAD
+=======
+    current_hour_pl = datetime.datetime.now(ZoneInfo("Europe/Warsaw")).hour
+>>>>>>> 277ca55 (Changes)
 
     # Days header
     for i, day in enumerate(DAYS):
@@ -116,6 +124,22 @@ def draw_grid():
         if date == today:
             pygame.draw.rect(screen, (80, 140, 255), (x, ROW_HEIGHT, COL_WIDTH, 4))
 
+<<<<<<< HEAD
+=======
+            y = (current_hour_pl - START_HOUR) * ROW_HEIGHT + 2 * ROW_HEIGHT
+            pygame.draw.rect(screen, (80, 140, 255), (x, y, COL_WIDTH, ROW_HEIGHT))
+            now_text = FONT.render("NOW", True, (0, 0, 0))
+            screen.blit(now_text, (x + COL_WIDTH//2 - now_text.get_width()//2,
+                        y + ROW_HEIGHT//2 - now_text.get_height()//2))
+        
+        if date == exam_date:
+            y = (exam_hour - START_HOUR) * ROW_HEIGHT + 2 * ROW_HEIGHT
+            pygame.draw.rect(screen, (255, 0, 0), (x, y, COL_WIDTH, ROW_HEIGHT))
+            exam_text = FONT.render("EXAM", True, (0, 0, 0))
+            screen.blit(exam_text, (x + COL_WIDTH//2 - exam_text.get_width()//2,
+                        y + ROW_HEIGHT//2 - exam_text.get_height()//2))
+
+>>>>>>> 277ca55 (Changes)
         screen.blit(FONT.render(f"{date.day}.{date.month}", True, (0, 0, 0)),
                     (x + COL_WIDTH//2 - 20, ROW_HEIGHT + 5))
         screen.blit(FONT.render(day, True, (0, 0, 0)),
@@ -132,6 +156,22 @@ def draw_grid():
     # Draw reservations on top
     draw_reservations(monday)
 
+<<<<<<< HEAD
+=======
+DATE_BTN = pygame.Rect(WIDTH - 200, 10, 180, 30)
+
+# REZERWACJE EGZAMINU (jak na razie do testu, ktos inny implementuje sama rezerwacje)
+exam_date = datetime.date(2025, 12, 12)
+exam_hour = 15
+
+def add_todays_date():
+    pygame.draw.rect(screen, (230, 230, 230), DATE_BTN)
+
+    date_text = FONT.render("Today's date: " + datetime.date.today().strftime('%Y-%m-%d'), True, (0, 0, 0))
+
+    screen.blit(date_text, (DATE_BTN.x + 12, DATE_BTN.y + 5))
+
+>>>>>>> 277ca55 (Changes)
 
 # ==========================================
 # FORM DRAWING
@@ -228,6 +268,10 @@ while running:
     # DRAW
     screen.fill((255, 255, 255))
     draw_buttons()
+<<<<<<< HEAD
+=======
+    add_todays_date()
+>>>>>>> 277ca55 (Changes)
     draw_grid()
 
     if show_form:
