@@ -10,6 +10,7 @@ screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Exams calendar")
 
 FONT = pygame.font.SysFont("Arial", 18)
+FONT_BOLD = pygame.font.SysFont("Arial", 20, bold=True)
 
 DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
 START_HOUR = 8
@@ -27,9 +28,29 @@ RES_BTN = pygame.Rect(120, 10, 130, 30)
 click_processed = False
 
 # ==========================================
-# NEW: RESERVATIONS LIST
+# RESERVATIONS LIST
 # ==========================================
-reservations = []   # each reservation: {date: datetime.date, time: datetime.time, label: str}
+reservations = [{"date": datetime.date(2025, 12, 12), "time": datetime.time(15, 0), "label": "Kowalski J. (A1)", "details": {
+        "Name": "Jan",
+        "Surname": "Kowalski",
+        "Birthday": "1995-05-20",
+        "ID": "123456",
+        "Category": "A1",
+        "Location": "Room 205"
+    }},
+    {"date": datetime.date(2025, 12, 11), "time": datetime.time(10, 0), "label": "Nowak A. (B2)", "details": {
+        "Name": "Anna",
+        "Surname": "Nowak",
+        "Birthday": "2000-01-01",
+        "ID": "987654",
+        "Category": "B2",
+        "Location": "Room 101"
+    }}]   # each reservation: {date: datetime.date, time: datetime.time, label: str}
+
+show_details = False          # True when the basic details pop-up is visible
+selected_reservation = None   # Stores the reservation dictionary
+DETAILS_BTN = None            # Stores the Rect for the "See all details" button
+show_full_details = False     # True when the expanded details pop-up is visible
 
 # ==========================================
 # FORM DATA
@@ -76,6 +97,7 @@ def draw_buttons():
 # DRAW RESERVATION BLOCKS IN GRID
 # ==========================================
 def draw_reservations(monday):
+    reservation_rects = []
     for r in reservations:
         date = r["date"]
         time = r["time"]
@@ -94,12 +116,17 @@ def draw_reservations(monday):
             y = (hour - START_HOUR) * ROW_HEIGHT + 2 * ROW_HEIGHT + 3
 
             # Draw block
+            rect = pygame.Rect(x, y, COL_WIDTH - 6, ROW_HEIGHT - 6)
             pygame.draw.rect(screen, (150, 200, 255), (x, y, COL_WIDTH - 6, ROW_HEIGHT - 6))
             pygame.draw.rect(screen, (0, 0, 120), (x, y, COL_WIDTH - 6, ROW_HEIGHT - 6), 2)
 
             # Text
             txt = FONT.render(label, True, (0, 0, 0))
             screen.blit(txt, (x + 5, y + 5))
+
+            # Store rect for click detection
+            reservation_rects.append((rect, r))
+    return reservation_rects      
 
 
 # ==========================================
@@ -123,14 +150,7 @@ def draw_grid():
             now_text = FONT.render("NOW", True, (0, 0, 0))
             screen.blit(now_text, (x + COL_WIDTH//2 - now_text.get_width()//2,
                         y + ROW_HEIGHT//2 - now_text.get_height()//2))
-        
-        if date == exam_date:
-            y = (exam_hour - START_HOUR) * ROW_HEIGHT + 2 * ROW_HEIGHT
-            pygame.draw.rect(screen, (255, 0, 0), (x, y, COL_WIDTH, ROW_HEIGHT))
-            exam_text = FONT.render("EXAM", True, (0, 0, 0))
-            screen.blit(exam_text, (x + COL_WIDTH//2 - exam_text.get_width()//2,
-                        y + ROW_HEIGHT//2 - exam_text.get_height()//2))
-
+            
         screen.blit(FONT.render(f"{date.day}.{date.month}", True, (0, 0, 0)),
                     (x + COL_WIDTH//2 - 20, ROW_HEIGHT + 5))
         screen.blit(FONT.render(day, True, (0, 0, 0)),
@@ -145,13 +165,9 @@ def draw_grid():
         screen.blit(FONT.render(f"{h}:00", True, (80, 80, 80)), (5, y + 2))
 
     # Draw reservations on top
-    draw_reservations(monday)
+    return draw_reservations(monday)
 
 DATE_BTN = pygame.Rect(WIDTH - 200, 10, 180, 30)
-
-# REZERWACJE EGZAMINU (jak na razie do testu, ktos inny implementuje sama rezerwacje)
-exam_date = datetime.date(2025, 12, 12)
-exam_hour = 15
 
 def add_todays_date():
     pygame.draw.rect(screen, (230, 230, 230), DATE_BTN)
@@ -183,24 +199,112 @@ def draw_form():
     pygame.draw.rect(screen, (0, 100, 0), submit_btn, 2)
     screen.blit(FONT.render("Submit", True, (0, 0, 0)),
                 (submit_btn.x + 30, submit_btn.y + 7))
+    
+# ==========================================
+# DRAW RESERVATION DETAILS (Basic Pop-up)
+# ==========================================
+def draw_reservation_details(reservation):
+    global DETAILS_BTN
+    
+    # Details Box (centered)
+    DETAIL_BOX_WIDTH = 400
+    DETAIL_BOX_HEIGHT = 200
+    DETAIL_BOX_X = WIDTH // 2 - DETAIL_BOX_WIDTH // 2
+    DETAIL_BOX_Y = HEIGHT // 2 - DETAIL_BOX_HEIGHT // 2
+    DETAIL_BOX_RECT = pygame.Rect(DETAIL_BOX_X, DETAIL_BOX_Y, DETAIL_BOX_WIDTH, DETAIL_BOX_HEIGHT)
+    
+    pygame.draw.rect(screen, (255, 255, 255), DETAIL_BOX_RECT)
+    pygame.draw.rect(screen, (0, 0, 0), DETAIL_BOX_RECT, 3)
+    
+    # Title
+    title_text = FONT_BOLD.render("Exam Reservation Details", True, (0, 0, 0))
+    screen.blit(title_text, (DETAIL_BOX_X + 10, DETAIL_BOX_Y + 10))
+    
+    # Basic Info
+    date_time_text = FONT.render(f"Date/Time: {reservation['date']} at {reservation['time'].strftime('%H:%M')}", True, (50, 50, 50))
+    label_text = FONT.render(f"Applicant: {reservation['label'].split('(')[0].strip()}", True, (50, 50, 50))
+    category_text = FONT.render(f"Category: {reservation['details'].get('Category', 'N/A')}", True, (50, 50, 50))
+    
+    screen.blit(date_time_text, (DETAIL_BOX_X + 10, DETAIL_BOX_Y + 40))
+    screen.blit(label_text, (DETAIL_BOX_X + 10, DETAIL_BOX_Y + 65))
+    screen.blit(category_text, (DETAIL_BOX_X + 10, DETAIL_BOX_Y + 90))
+    
+    # "See all details" Button
+    DETAILS_BTN = pygame.Rect(DETAIL_BOX_X + DETAIL_BOX_WIDTH - 150, DETAIL_BOX_Y + DETAIL_BOX_HEIGHT - 45, 140, 35)
+    pygame.draw.rect(screen, (255, 200, 200), DETAILS_BTN)
+    pygame.draw.rect(screen, (150, 0, 0), DETAILS_BTN, 2)
+    btn_text = FONT.render("See all details", True, (0, 0, 0))
+    screen.blit(btn_text, (DETAILS_BTN.x + 10, DETAILS_BTN.y + 7))
 
+    # Close/Escape Text
+    close_text = FONT.render("[ESC] to close", True, (100, 100, 100))
+    screen.blit(close_text, (DETAIL_BOX_X + 10, DETAIL_BOX_Y + DETAIL_BOX_HEIGHT - 30))
+
+
+# ==========================================
+# DRAW ALL DETAILS POPUP (Expanded View)
+# ==========================================
+def draw_all_details(reservation):
+    DETAIL_BOX_WIDTH = 400
+    DETAIL_BOX_HEIGHT = 500
+    DETAIL_BOX_X = WIDTH // 2 - DETAIL_BOX_WIDTH // 2
+    DETAIL_BOX_Y = HEIGHT // 2 - DETAIL_BOX_HEIGHT // 2
+    DETAIL_BOX_RECT = pygame.Rect(DETAIL_BOX_X, DETAIL_BOX_Y, DETAIL_BOX_WIDTH, DETAIL_BOX_HEIGHT)
+
+    pygame.draw.rect(screen, (240, 240, 240), DETAIL_BOX_RECT)
+    pygame.draw.rect(screen, (0, 0, 0), DETAIL_BOX_RECT, 3)
+
+    screen.blit(FONT_BOLD.render("Full Reservation Details", True, (0, 0, 0)),
+                (DETAIL_BOX_X + 10, DETAIL_BOX_Y + 10))
+
+    y_offset = DETAIL_BOX_Y + 50
+    
+    # Compile all data fields
+    data_to_display = {
+        "Date": reservation['date'].strftime('%Y-%m-%d'),
+        "Time": reservation['time'].strftime('%H:%M'),
+        **reservation['details']
+    }
+
+    for key, value in data_to_display.items():
+        key_text = FONT_BOLD.render(f"{key}:", True, (0, 0, 0))
+        value_text = FONT.render(str(value), True, (50, 50, 50))
+        
+        screen.blit(key_text, (DETAIL_BOX_X + 10, y_offset))
+        screen.blit(value_text, (DETAIL_BOX_X + 120, y_offset + 2))
+        y_offset += 30
+
+    # Close/Escape Text
+    close_text = FONT.render("[ESC] to close", True, (100, 100, 100))
+    screen.blit(close_text, (DETAIL_BOX_X + 10, DETAIL_BOX_Y + DETAIL_BOX_HEIGHT - 30))
 
 # ==========================================
 # MAIN LOOP
 # ==========================================
 running = True
+reservation_rects = []
 while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
+        # --- Handle Escape key to close any overlay ---
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            if show_full_details:
+                show_full_details = False
+            elif show_details:
+                show_details = False
+                selected_reservation = None
+            elif show_form:
+                show_form = False
+                active_field = None
+
         # ================================
         # OPEN FORM
         # ================================
-        if not show_form:
+        if not show_form and not show_details and not show_full_details:
             if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
-
-                # --- FIX: Handle week switching again ---
+                # --- Handle week switching ---
                 if LEFT_BTN.collidepoint(event.pos):
                     week_offset -= 1
 
@@ -211,10 +315,17 @@ while running:
                 if RES_BTN.collidepoint(event.pos):
                     show_form = True
 
+                # --- Handle clicking on a reservation block ---
+                for rect, res_data in reservation_rects:
+                    if rect.collidepoint(event.pos):
+                        selected_reservation = res_data
+                        show_details = True
+                        break # Only process one reservation click
+
         # ================================
         # FORM INPUT LOGIC
         # ================================
-        if show_form:
+        elif show_form:
             if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
                 show_form = False
                 active_field = None
@@ -231,11 +342,16 @@ while running:
                         r_date = datetime.datetime.strptime(form_fields["Date"], "%Y-%m-%d").date()
                         r_time = datetime.datetime.strptime(form_fields["Time"], "%H:%M").time()
 
+                        details = {k: v for k, v in form_fields.items()}
+                        del details["Date"] 
+                        del details["Time"]
+
                         label = f"{form_fields['Name']} {form_fields['Surname']} ({form_fields['Category']})"
                         reservations.append({
                             "date": r_date,
                             "time": r_time,
-                            "label": label
+                            "label": label,
+                            "details": details
                         })
                         print("Reservation added:", reservations[-1])
 
@@ -252,14 +368,29 @@ while running:
                 elif len(form_fields[active_field]) < 30:
                     form_fields[active_field] += event.unicode
 
+        # ================================
+        # RESERVATION DETAILS LOGIC
+        # ================================            
+        elif show_details:
+            if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                if DETAILS_BTN and DETAILS_BTN.collidepoint(event.pos):
+                    show_full_details = True
+                    show_details = False # Close basic details view
+
     # DRAW
     screen.fill((255, 255, 255))
     draw_buttons()
     add_todays_date()
-    draw_grid()
+    reservation_rects = draw_grid()
 
     if show_form:
         draw_form()
+
+    if show_details and selected_reservation:
+        draw_reservation_details(selected_reservation)
+    
+    if show_full_details and selected_reservation:
+        draw_all_details(selected_reservation)
 
     pygame.display.flip()
 
